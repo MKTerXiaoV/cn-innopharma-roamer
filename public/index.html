@@ -1315,7 +1315,8 @@
   if(D.meta && D.meta._seed) document.getElementById("seedTag").hidden=false;
   buildSources();
   evolution = createEvolution();
-  setMode("landscape", true);
+  // 手机竖屏默认进「演进」(一屏纵览全部领域,散点在窄高屏会挤);宽屏默认「格局」
+  setMode((innerWidth <= 640 || innerWidth < innerHeight) ? "evolution" : "landscape", true);
 })();
 </script>
 </body>
