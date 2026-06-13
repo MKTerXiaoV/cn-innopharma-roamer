@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>中国创新药 · 热门靶点演进图谱</title>
+<link rel="icon" href="data:,">
+<style>
+  :root{ --gold:#E8943A; --cool:#4FB0C6; --ink:#e8edf2; --mut:#8a97a6; --panel:rgba(14,20,30,.92); --line:rgba(255,255,255,.10); }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;background:#06090f;color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans SC","Helvetica Neue",sans-serif;
+    -webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;user-select:none}
+  #cv{position:fixed;inset:0;display:block;cursor:grab}
+  #cv.drag{cursor:grabbing}
+
+  /* 标题 */
+  .title{position:fixed;top:22px;left:24px;z-index:10;pointer-events:none}
+  .title h1{font-size:21px;font-weight:800;letter-spacing:.01em}
+  .title .sub{font-size:12.5px;color:var(--gold);font-weight:700;letter-spacing:.06em;margin-top:3px;text-transform:uppercase}
+  .title .seed{display:inline-block;margin-top:7px;font-size:10.5px;color:var(--mut);border:1px solid var(--line);border-radius:999px;padding:2px 9px}
+  .title .seed[hidden]{display:none}
+
+  /* 横轴图例 */
+  .axis{position:fixed;left:50%;transform:translateX(-50%);bottom:64px;z-index:10;width:min(560px,86vw);pointer-events:none}
+  .axis .bar{height:6px;border-radius:6px;background:linear-gradient(90deg,var(--cool),#9a86c4,var(--gold))}
+  .axis .lbls{display:flex;justify-content:space-between;margin-top:7px;font-size:11px;color:var(--mut)}
+  .axis .lbls b{color:var(--ink);font-weight:700}
+  .axis .cap{text-align:center;font-size:10.5px;color:var(--mut);margin-bottom:7px;letter-spacing:.04em}
+
+  /* 详情面板 */
+  .panel{position:fixed;top:0;right:0;height:100%;width:min(360px,92vw);background:var(--panel);
+    backdrop-filter:blur(10px);border-left:1px solid var(--line);z-index:20;
+    transform:translateX(100%);transition:transform .32s cubic-bezier(.22,.61,.36,1);padding:26px 24px;overflow-y:auto}
+  .panel.on{transform:none}
+  .panel .x{position:absolute;top:16px;right:18px;width:30px;height:30px;border:0;background:rgba(255,255,255,.06);
+    color:var(--ink);border-radius:8px;font-size:17px;cursor:pointer}
+  .panel .cat{font-size:11.5px;color:var(--gold);font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+  .panel h2{font-size:24px;font-weight:800;margin:8px 0 2px;line-height:1.25}
+  .panel .co{font-size:13.5px;color:var(--mut);margin-bottom:18px}
+  .panel .ficwrap{margin:18px 0 6px}
+  .panel .ficwrap .t{font-size:11px;color:var(--mut);display:flex;justify-content:space-between;margin-bottom:6px}
+  .panel .fic{height:8px;border-radius:8px;background:rgba(255,255,255,.08);position:relative;overflow:hidden}
+  .panel .fic i{position:absolute;left:0;top:0;bottom:0;border-radius:8px;background:linear-gradient(90deg,var(--cool),var(--gold))}
+  .panel .ficv{font-size:12px;color:var(--ink);font-weight:700;margin-top:6px}
+  .panel dl{margin-top:18px;display:grid;grid-template-columns:auto 1fr;gap:10px 14px;font-size:13.5px}
+  .panel dt{color:var(--mut)} .panel dd{color:var(--ink);font-weight:600}
+  .panel .pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 10px;border-radius:999px;background:rgba(232,148,58,.16);color:var(--gold)}
+  .panel .note{margin-top:18px;font-size:13px;color:var(--mut);line-height:1.7;border-top:1px solid var(--line);padding-top:14px}
+  .panel .src{margin-top:12px;font-size:11px;color:var(--mut)}
+  .panel .src b{color:var(--ink)}
+  .panel .src a{color:var(--gold);text-decoration:none;overflow-wrap:anywhere}
+
+  /* 来源 */
+  .sourceBtn{position:fixed;top:58px;right:22px;z-index:11;border:1px solid var(--line);background:rgba(14,20,30,.78);
+    color:var(--ink);border-radius:8px;padding:7px 11px;font-size:12px;font-weight:800;cursor:pointer;backdrop-filter:blur(8px)}
+  .modeBar{position:fixed;top:86px;left:24px;z-index:12;display:flex;align-items:center;gap:10px}
+  .modeSwitch{display:flex;padding:3px;border:1px solid var(--line);border-radius:10px;background:rgba(14,20,30,.74);backdrop-filter:blur(8px)}
+  .modeSwitch button{min-width:58px;height:28px;border:0;border-radius:7px;background:transparent;color:var(--mut);
+    font-size:12px;font-weight:850;letter-spacing:.03em;cursor:pointer}
+  .modeSwitch button.on{background:rgba(232,148,58,.18);color:var(--ink);box-shadow:inset 0 0 0 1px rgba(232,148,58,.28)}
+  .viewMeta{font-size:10.5px;color:var(--mut);white-space:nowrap}
+  .sources{position:fixed;top:0;right:0;height:100%;width:min(420px,94vw);background:var(--panel);
+    backdrop-filter:blur(10px);border-left:1px solid var(--line);z-index:21;
+    transform:translateX(100%);transition:transform .32s cubic-bezier(.22,.61,.36,1);padding:28px 24px;overflow-y:auto}
+  .sources.on{transform:none}
+  .sources .x{position:absolute;top:16px;right:18px;width:30px;height:30px;border:0;background:rgba(255,255,255,.06);
+    color:var(--ink);border-radius:8px;font-size:17px;cursor:pointer}
+  .sources h2{font-size:21px;font-weight:800;margin-bottom:6px}
+  .sources .desc{font-size:12px;color:var(--mut);line-height:1.6;margin-bottom:16px}
+  .sourceItem{border-top:1px solid var(--line);padding:13px 0}
+  .sourceItem a,.sourceItem b{color:var(--ink);font-size:12px;font-weight:800;text-decoration:none;overflow-wrap:anywhere}
+  .sourceItem a:hover{color:var(--gold)}
+  .sourceItem span{display:block;color:var(--mut);font-size:11px;line-height:1.55;margin-top:5px}
+
+  /* 控件 */
+  .ctl{position:fixed;right:18px;bottom:64px;z-index:10;display:flex;flex-direction:column;gap:8px}
+  .ctl button{width:38px;height:38px;border:1px solid var(--line);background:rgba(14,20,30,.7);color:var(--ink);
+    border-radius:10px;font-size:18px;cursor:pointer;backdrop-filter:blur(6px)}
+  .hint{position:fixed;left:24px;bottom:64px;z-index:10;font-size:11.5px;color:var(--mut);pointer-events:none;line-height:1.6}
+
+  /* IP lockup */
+  .ip{position:fixed;top:20px;right:22px;z-index:10;display:flex;align-items:center;gap:8px;pointer-events:none}
+  .ip .tx{text-align:right;line-height:1.25}
+  .ip .tx b{display:block;font-size:12.5px;font-weight:800}
+  .ip .tx span{display:block;font-size:10px;color:var(--mut)}
+  .ip .dot{width:8px;height:8px;border-radius:50%;background:var(--cool);box-shadow:0 0 0 4px rgba(79,176,198,.18)}
+
+  /* 底部免责 */
+  .foot{position:fixed;left:0;right:0;bottom:0;z-index:10;text-align:center;padding:9px 10px;
+    font-size:10.5px;color:var(--mut);background:linear-gradient(180deg,transparent,#06090f 60%);pointer-events:none}
+  .foot b{color:#aeb8c4;font-weight:600}
+
+  /* 演进视图 */
+  .evoView{position:fixed;left:0;right:0;top:122px;bottom:38px;z-index:4;display:grid;grid-template-rows:minmax(0,1fr) auto;
+    background:radial-gradient(circle at 50% 16%,rgba(79,176,198,.13),transparent 32%),linear-gradient(180deg,#0b1320 0%,#06090f 68%)}
+  .evoView[hidden]{display:none}
+  .evoStageWrap{position:relative;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+  .evoStageWrap::-webkit-scrollbar{width:9px}
+  .evoStageWrap::-webkit-scrollbar-track{background:rgba(255,255,255,.03)}
+  .evoStageWrap::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border-radius:10px}
+  #evoPlot{display:block;width:100%;min-height:100%}
+  .fieldFrame{fill:rgba(255,255,255,.018);stroke:rgba(255,255,255,.12);stroke-width:1}
+  .bandDivider{stroke:rgba(255,255,255,.10);stroke-width:1}
+  .areaName{fill:#dfe8f2;font-size:15px;font-weight:850}
+  .areaEn{fill:var(--mut);font-size:10px;font-weight:700;letter-spacing:.03em}
+  .areaCount{fill:rgba(232,148,58,.92);font-size:10px;font-weight:850}
+  .axisText{fill:var(--mut);font-size:10px;font-weight:650}
+  .axisStrong{fill:var(--ink);font-size:10px;font-weight:760}
+  .grid{stroke:rgba(255,255,255,.07);stroke-width:1}
+  .grid.major{stroke:rgba(255,255,255,.15)}
+  .guide{fill:none;stroke:url(#curveGrad);stroke-width:1.2;stroke-linecap:round;stroke-dasharray:4 7;opacity:.42}
+  .cursorLine{stroke:rgba(232,148,58,.66);stroke-width:1.15;stroke-dasharray:4 6}
+  .nodeHalo{opacity:0;transition:opacity .16s ease}
+  .nodeDot{transition:opacity .16s ease, r .16s ease, stroke-width .16s ease;cursor:pointer}
+  .nodeLabel{fill:#dfe8f2;font-size:10px;font-weight:720;paint-order:stroke;stroke:#06090f;stroke-width:3px;stroke-linejoin:round;transition:opacity .16s ease;pointer-events:none}
+  .trackLabel{font-size:9px;font-weight:820;letter-spacing:.03em;pointer-events:none}
+  .inactive .nodeDot{opacity:.18}
+  .inactive .nodeLabel,.inactive .trackLabel{opacity:.12}
+  .active .nodeDot{opacity:.98}
+  .active .nodeLabel{opacity:.92}
+  .active .trackLabel{opacity:.82}
+  .active.hot .nodeHalo{opacity:.72}
+  .active.hot .nodeDot{filter:drop-shadow(0 0 9px rgba(232,148,58,.34))}
+  .selected .nodeDot{stroke:#fff;stroke-width:2.2}
+  .evoEmpty{position:absolute;left:24px;top:24px;color:var(--mut);font-size:13px}
+  .evoTimeline{padding:10px 24px 9px;border-top:1px solid var(--line);background:rgba(6,9,15,.88);backdrop-filter:blur(10px)}
+  .evoControls{display:grid;grid-template-columns:38px minmax(220px,1fr) 62px;align-items:center;gap:14px}
+  .evoControls button{width:38px;height:38px;border:1px solid var(--line);border-radius:9px;background:rgba(14,20,30,.78);
+    color:var(--ink);font-size:16px;font-weight:850;cursor:pointer}
+  .evoControls button:focus-visible,.evoControls input:focus-visible,.modeSwitch button:focus-visible{outline:2px solid rgba(232,148,58,.70);outline-offset:3px}
+  .rangeWrap{display:grid;gap:6px}
+  input[type=range]{width:100%;accent-color:var(--gold)}
+  .ticks{display:flex;justify-content:space-between;color:var(--mut);font-size:10px;font-weight:750}
+  .yearReadout{text-align:right;color:var(--gold);font-size:23px;font-weight:900;font-variant-numeric:tabular-nums;min-width:58px}
+  .evoLegend{margin-top:4px;display:flex;gap:8px;align-items:center;color:var(--mut);font-size:10.5px}
+  .evoLegend .bar{width:94px;height:6px;border-radius:8px;background:linear-gradient(90deg,var(--cool),#9a86c4,var(--gold))}
+  body.mode-evolution #cv,body.mode-evolution .axis,body.mode-evolution .ctl,body.mode-evolution .hint{display:none}
+  .tourCanvas{position:fixed;inset:0;z-index:40;display:block;background:#06090f}
+  .tourBadge{position:fixed;left:24px;bottom:22px;z-index:41;color:rgba(232,237,242,.72);font-size:10px;letter-spacing:.08em;
+    text-transform:uppercase;pointer-events:none}
+  .tourCanvas[hidden],.tourBadge[hidden]{display:none}
+  body.tour-mode{overflow:hidden}
+  body.tour-mode #cv,body.tour-mode .title,body.tour-mode .ip,body.tour-mode .sourceBtn,body.tour-mode .modeBar,
+  body.tour-mode .axis,body.tour-mode .ctl,body.tour-mode .hint,body.tour-mode .sources,body.tour-mode .panel,
+  body.tour-mode .foot,body.tour-mode .evoView{display:none!important}
+  @media(max-width:640px){
+    .title{top:16px;left:16px;right:72px}.title h1{font-size:17px;line-height:1.25}.title .sub{font-size:11px}
+    .ip{display:none}.sourceBtn{top:18px;right:16px;padding:7px 10px}
+    .modeBar{top:78px;left:16px;right:16px;gap:8px}.modeSwitch button{min-width:52px}.viewMeta{font-size:9.5px;overflow:hidden;text-overflow:ellipsis}
+    .axis{bottom:70px}.axis .lbls{font-size:9.5px}.axis .cap{font-size:9.5px}
+    .ctl{right:14px;bottom:154px}.hint{display:none}
+    .panel,.sources{width:100%;padding:24px 20px 72px}
+    .foot{font-size:10px;padding-bottom:calc(8px + env(safe-area-inset-bottom))}
+    .evoView{top:118px;bottom:48px}
+    .evoTimeline{padding:9px 14px 8px}
+    .evoControls{grid-template-columns:38px minmax(140px,1fr) 54px;gap:10px}
+    .yearReadout{font-size:19px;min-width:50px}
+    .ticks{font-size:9px}
+    .evoLegend{font-size:9.5px}.evoLegend .bar{width:70px}
+  }
+</style>
+</head>
+<body>
+<canvas id="tourCv" class="tourCanvas" hidden></canvas>
+<div id="tourBadge" class="tourBadge" hidden>TOUR MODE · deterministic seek(t)</div>
+<canvas id="cv"></canvas>
+
+<div class="title">
+  <h1>中国创新药 · 热门靶点演进图谱</h1>
+  <div class="sub">精选代表性赛道 · fast-follow → first-in-class</div>
+  <div class="seed" id="seedTag" hidden>种子数据 · 引擎演示</div>
+</div>
+
+<div class="ip">
+  <div class="tx"><b>MKTer 小V</b><span>一起进化</span></div>
+  <div class="dot"></div>
+</div>
+<button class="sourceBtn" id="sourceBtn">来源</button>
+<div class="modeBar">
+  <div class="modeSwitch" role="tablist" aria-label="视图切换">
+    <button id="modeLandscape" class="on" type="button" role="tab" aria-selected="true">格局</button>
+    <button id="modeEvolution" type="button" role="tab" aria-selected="false">演进</button>
+  </div>
+  <div class="viewMeta" id="viewMeta">格局视图</div>
+</div>
+
+<div class="axis">
+  <div class="cap">横轴 = 跟随 ↔ 原创 光谱（科普性简化）</div>
+  <div class="bar"></div>
+  <div class="lbls"><b>← 快速跟随 me-too</b><span>差异化 me-better</span><b>原创 first-in-class →</b></div>
+</div>
+
+<div class="ctl">
+  <button id="zin">＋</button>
+  <button id="zout">－</button>
+  <button id="reset" title="复位">⤢</button>
+</div>
+<div class="hint">滚轮/双指缩放 · 拖拽平移 · 点击药物看详情</div>
+
+<section class="evoView" id="evoView" hidden aria-label="六个治疗领域的二维演进场">
+  <section class="evoStageWrap" id="evoStageWrap">
+    <div class="evoEmpty" id="evoEmpty">正在绘制演进场...</div>
+    <svg id="evoPlot" role="img" aria-label="中国创新药热门靶点时间与原创光谱二维演进图"></svg>
+  </section>
+  <section class="evoTimeline" aria-label="年份游标">
+    <div class="evoControls">
+      <button id="evoPlay" aria-label="播放">▶</button>
+      <div class="rangeWrap">
+        <input id="evoYearRange" type="range" min="2018" max="2026" step="0.01" value="2018" aria-label="年份游标">
+        <div class="ticks" id="evoTicks" aria-hidden="true"></div>
+      </div>
+      <div class="yearReadout" id="evoYearReadout">2018</div>
+    </div>
+    <div class="evoLegend"><span>跟随</span><span class="bar"></span><span>原创</span><span>· 节点大小=阶段</span></div>
+  </section>
+</section>
+
+<aside class="sources" id="sources">
+  <button class="x" id="sx">×</button>
+  <h2>公开来源</h2>
+  <div class="desc">入选标准：该靶点/赛道有 ≥3 个公开资产，或在 fast-follow↔first-in-class 上有清晰梯度；里程碑有公开来源可核验；仅收公开数据，按热门/代表性策展，非穷尽。</div>
+  <div id="sourceList"></div>
+</aside>
+
+<aside class="panel" id="panel">
+  <button class="x" id="px">×</button>
+  <div class="cat" id="pcat"></div>
+  <h2 id="pname"></h2>
+  <div class="co" id="pco"></div>
+  <div class="ficwrap">
+    <div class="t"><span>跟随</span><span>原创</span></div>
+    <div class="fic"><i id="pfic"></i></div>
+    <div class="ficv" id="pficv"></div>
+  </div>
+  <dl id="pdl"></dl>
+  <div class="note" id="pnote"></div>
+  <div class="src" id="psrc"></div>
+</aside>
+
+<div class="foot">
+  <b>公开资料整理 · 精选代表性赛道</b> · 仅收公开可核验信息，按热门/代表性策展，非穷尽收录 · fic 为跟随↔原创的科普性简化，非监管/学术定义 · 不构成投资或医疗建议 · 不代表任何雇主 · MKTer 小V · 一起进化
+</div>
+
+<script src="data.js?v=20260613c"></script>
+<script>
+(function(){
+  const D = window.ROAMER_DATA;
+  const cv = document.getElementById("cv"), ctx = cv.getContext("2d");
+  const modeLandscapeBtn = document.getElementById("modeLandscape");
+  const modeEvolutionBtn = document.getElementById("modeEvolution");
+  const viewMeta = document.getElementById("viewMeta");
+  const evoView = document.getElementById("evoView");
+  const isTour = new URLSearchParams(location.search).get("tour") === "1";
+  let DPR = Math.min(window.devicePixelRatio||1, 2), W=0, H=0;
+  let mode = "";
+  let evolution = null;
+
+  // ---------- 布局：x=fic 光谱，y 按 领域→赛道 分行 ----------
+  const MARGIN_X = 180, ROW_H = 70, TRACK_GAP = 8, AREA_GAP = 34, TOP = 90;
+  const SPAN_X = 1500; // 世界坐标 x 跨度（fic 0..1 映射到 [MARGIN_X, MARGIN_X+SPAN_X]）
+  const nodes = [];      // {x,y,r,d, track, area}
+  const rows = [];       // {type:'area'|'track', label, sub, y, x0,x1}
+  let worldH = 0;
+  (function layout(){
+    let y = TOP;
+    D.areas.forEach(area=>{
+      const areaY0 = y;
+      rows.push({type:"area", label:area.name, sub:area.en, y:y});
+      y += 30;
+      area.tracks.forEach(tr=>{
+        const ry = y + ROW_H/2;
+        rows.push({type:"track", label:tr.name, sub:tr.target, y:ry, x0:MARGIN_X, x1:MARGIN_X+SPAN_X});
+        // 同一赛道内按 fic 排，y 轻微抖动避免重叠
+        const sorted = tr.drugs.slice().sort((a,b)=>a.fic-b.fic);
+        sorted.forEach((dr,i)=>{
+          const jitter = (i%2===0? -1:1) * Math.min(14, 4+i*2);
+          nodes.push({
+            x: MARGIN_X + dr.fic*SPAN_X,
+            y: ry + jitter,
+            r: dr.status==="获批"? 9 : (dr.status==="III期"?6.5:5),
+            d: dr, track: tr.name, area: area.name
+          });
+        });
+        y += ROW_H + TRACK_GAP;
+      });
+      y += AREA_GAP;
+    });
+    worldH = y;
+  })();
+
+  // ---------- 相机 ----------
+  let cam = { s:1, ox:0, oy:0 };
+  function fit(){
+    const m = 60;
+    const sx = (W - m*2) / (MARGIN_X + SPAN_X + MARGIN_X);
+    const sy = (H - m*2 - 120) / worldH;
+    cam.s = Math.min(sx, sy);
+    cam.ox = (W - (MARGIN_X+SPAN_X+MARGIN_X)*cam.s)/2;
+    cam.oy = 70;
+  }
+  const w2sX = x => x*cam.s + cam.ox;
+  const w2sY = y => y*cam.s + cam.oy;
+  const s2wX = X => (X-cam.ox)/cam.s;
+  const s2wY = Y => (Y-cam.oy)/cam.s;
+
+  // ---------- 星空背景 ----------
+  let stars = [];
+  function makeStars(){ stars=[]; const n=Math.round(W*H/9000);
+    for(let i=0;i<n;i++) stars.push({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.3+.2,a:Math.random()*.5+.15,p:Math.random()*Math.PI*2}); }
+
+  // fic → 颜色（跟随冷青 → 原创暖金）
+  function ficColor(f, alpha){
+    const c=[79,176,198], g=[232,148,58], mid=[154,134,196];
+    let r,gg,b;
+    if(f<.5){const t=f/.5; r=c[0]+(mid[0]-c[0])*t; gg=c[1]+(mid[1]-c[1])*t; b=c[2]+(mid[2]-c[2])*t;}
+    else{const t=(f-.5)/.5; r=mid[0]+(g[0]-mid[0])*t; gg=mid[1]+(g[1]-mid[1])*t; b=mid[2]+(g[2]-mid[2])*t;}
+    return `rgba(${Math.round(r)},${Math.round(gg)},${Math.round(b)},${alpha})`;
+  }
+  function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+  function svgEl(tag, attrs){
+    const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    Object.entries(attrs || {}).forEach(([k,v])=>el.setAttribute(k, v));
+    return el;
+  }
+  function sourceUrl(source){ return (source || "").match(/https?:\/\/\S+/)?.[0] || ""; }
+  function sourceLabel(source){
+    const url = sourceUrl(source);
+    return (source || "公开来源").replace(url, "").replace(/\s*:\s*$/, "").trim() || "公开来源";
+  }
+  function smoothstep(v){ v = clamp(v, 0, 1); return v*v*(3-2*v); }
+  function easeInOut(v){ v = clamp(v, 0, 1); return v < .5 ? 2*v*v : 1 - Math.pow(-2*v + 2, 2)/2; }
+  function mix(a,b,t){ return a + (b-a)*t; }
+  function stringHash(s){
+    let h = 2166136261;
+    for(let i=0;i<s.length;i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return (h >>> 0) / 4294967295;
+  }
+  function hash01(n){ return (Math.sin(n * 127.1 + 311.7) * 43758.5453123) % 1 + ((Math.sin(n * 127.1 + 311.7) * 43758.5453123) % 1 < 0 ? 1 : 0); }
+  function roundRect(ctx,x,y,w,h,r){
+    const rr = Math.min(r, w/2, h/2);
+    ctx.beginPath();
+    ctx.moveTo(x+rr,y); ctx.lineTo(x+w-rr,y); ctx.quadraticCurveTo(x+w,y,x+w,y+rr);
+    ctx.lineTo(x+w,y+h-rr); ctx.quadraticCurveTo(x+w,y+h,x+w-rr,y+h);
+    ctx.lineTo(x+rr,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-rr);
+    ctx.lineTo(x,y+rr); ctx.quadraticCurveTo(x,y,x+rr,y); ctx.closePath();
+  }
+  function wrapCanvasText(ctx, text, x, y, maxW, lineH, maxLines){
+    const chars = String(text || "").split("");
+    let line = "", lines = [];
+    for(const ch of chars){
+      const test = line + ch;
+      if(ctx.measureText(test).width > maxW && line){
+        lines.push(line);
+        line = ch;
+        if(lines.length >= maxLines) break;
+      }else{
+        line = test;
+      }
+    }
+    if(line && lines.length < maxLines) lines.push(line);
+    lines.forEach((ln, i)=>ctx.fillText(ln, x, y + i*lineH));
+  }
+
+  function createTourMode(){
+    const tourCv = document.getElementById("tourCv");
+    const tourCtx = tourCv.getContext("2d");
+    const duration = 22;
+    const minFic = .25, maxFic = .98;
+    const world = { w: 1960, h: 0 };
+    const nodes = [];
+    const areas = [];
+    const allDrugs = D.areas.flatMap(area => area.tracks.flatMap(track => track.drugs.map(drug => ({ area, track, drug }))));
+
+    let y = 130;
+    D.areas.forEach((area, ai)=>{
+      const areaStart = y;
+      area.tracks.forEach((track, ti)=>{
+        const rowY = y + ti * 72;
+        const sorted = track.drugs.slice().sort((a,b)=>a.fic-b.fic || a.year-b.year);
+        sorted.forEach((drug, di)=>{
+          const h = stringHash(area.id + track.id + drug.name);
+          nodes.push({
+            id: `${area.id}:${track.id}:${drug.name}`,
+            x: 140 + drug.fic * 1680 + (h - .5) * 26,
+            y: rowY + (di%2===0 ? -1 : 1) * Math.min(20, 8 + di*3) + (h - .5) * 8,
+            area, track, drug,
+            areaIndex: ai,
+            trackIndex: ti,
+            localIndex: di,
+            h
+          });
+        });
+      });
+      const areaHeight = Math.max(150, area.tracks.length * 72 + 52);
+      areas.push({ area, y: areaStart + areaHeight*.36, top: areaStart - 58, bottom: areaStart + areaHeight });
+      y += areaHeight + 112;
+    });
+    world.h = y + 120;
+
+    const ioNodes = nodes.filter(n => n.area.id === "io" || n.area.name === "肿瘤免疫").sort((a,b)=>a.drug.fic-b.drug.fic || a.drug.year-b.drug.year);
+    const rankedNodes = nodes.slice().sort((a,b)=>b.drug.fic-a.drug.fic);
+    const focusNodes = ["依沃西单抗", "泽布替尼", "西达基奥仑赛"].map(name => nodes.find(n => n.drug.name === name)).filter(Boolean);
+    while(focusNodes.length < 3 && rankedNodes.length){
+      const next = rankedNodes.shift();
+      if(next && !focusNodes.includes(next)) focusNodes.push(next);
+    }
+    const target = focusNodes[0] || rankedNodes[0] || nodes[0];
+    const btkTarget = focusNodes[1] || target;
+    const carTarget = focusNodes[2] || btkTarget;
+    const detailShots = [
+      { node: target, in: 8.15, out: 11.0 },
+      { node: btkTarget, in: 12.85, out: 15.45 },
+      { node: carTarget, in: 16.8, out: 19.55 }
+    ];
+    const ioLow = ioNodes[0] || target;
+    const ioHigh = ioNodes[ioNodes.length-1] || target;
+    const broad = { x: world.w*.5, y: world.h*.5, s: .42, vx:.5, vy:.52 };
+    const ioStart = { x: Math.max(430, ioLow.x + 70), y: ioLow.y + 10, s: 1.28, vx:.5, vy:.52 };
+    const ioEnd = { x: Math.min(world.w-260, ioHigh.x + 230), y: ioHigh.y + 6, s: 1.58, vx:.5, vy:.52 };
+    const adc = nodes.find(n => n.area.id === "adc") || nodes[Math.floor(nodes.length*.45)] || target;
+    const hemeBridge = { x: mix(adc.x, btkTarget.x, .55), y: mix(adc.y, btkTarget.y, .62), s: 1.12, vx:.5, vy:.50 };
+    const close = { x: target.x, y: target.y, s: 3.0, vx:.35, vy:.48 };
+    const hold = { x: target.x, y: target.y, s: 3.25, vx:.34, vy:.48 };
+    const closeBtk = { x: btkTarget.x, y: btkTarget.y, s: 2.85, vx:.38, vy:.50 };
+    const holdBtk = { x: btkTarget.x, y: btkTarget.y, s: 3.05, vx:.37, vy:.50 };
+    const closeCar = { x: carTarget.x, y: carTarget.y, s: 2.95, vx:.38, vy:.49 };
+    const holdCar = { x: carTarget.x, y: carTarget.y, s: 3.15, vx:.36, vy:.49 };
+    const cameraKeys = [
+      { t: 0, c: broad },
+      { t: 1.35, c: ioStart },
+      { t: 5.65, c: ioEnd },
+      { t: 7.9, c: close },
+      { t: 10.75, c: hold },
+      { t: 12.55, c: hemeBridge },
+      { t: 13.25, c: closeBtk },
+      { t: 15.35, c: holdBtk },
+      { t: 16.75, c: closeCar },
+      { t: 19.45, c: holdCar },
+      { t: duration, c: broad }
+    ];
+
+    function canvasSize(){
+      const dpr = Math.min(devicePixelRatio || 1, 2);
+      const w = Math.max(320, innerWidth);
+      const h = Math.max(480, innerHeight);
+      const pxW = Math.round(w * dpr), pxH = Math.round(h * dpr);
+      if(tourCv.width !== pxW || tourCv.height !== pxH){
+        tourCv.width = pxW; tourCv.height = pxH;
+        tourCv.style.width = w + "px"; tourCv.style.height = h + "px";
+      }
+      tourCtx.setTransform(dpr,0,0,dpr,0,0);
+      return { w, h, dpr };
+    }
+    function cameraAt(t){
+      function between(a,b,u){
+        const e = easeInOut(u);
+        return {
+          x: mix(a.x,b.x,e), y: mix(a.y,b.y,e), s: mix(a.s,b.s,e),
+          vx: mix(a.vx,b.vx,e), vy: mix(a.vy,b.vy,e)
+        };
+      }
+      let c = cameraKeys[cameraKeys.length-1].c;
+      for(let i=0;i<cameraKeys.length-1;i++){
+        const a = cameraKeys[i], b = cameraKeys[i+1];
+        if(t >= a.t && t <= b.t){
+          c = between(a.c, b.c, (t-a.t)/(b.t-a.t));
+          break;
+        }
+      }
+      c.x += Math.sin(t*.72) * 14;
+      c.y += Math.sin(t*.57 + 1.3) * 10;
+      c.s *= Math.min(canvasSize().w / 820, canvasSize().h / 1320) * 1.05;
+      return c;
+    }
+    function project(n, cam, size){
+      return {
+        x: (n.x - cam.x) * cam.s + size.w * cam.vx,
+        y: (n.y - cam.y) * cam.s + size.h * cam.vy
+      };
+    }
+    function focusPulse(n, t){
+      let v = 0;
+      detailShots.forEach(shot=>{
+        if(shot.node !== n) return;
+        const inP = smoothstep((t - (shot.in - .72)) / .82);
+        const outP = smoothstep((t - (shot.out + .16)) / .72);
+        v = Math.max(v, inP * (1 - outP));
+      });
+      return v;
+    }
+    function activeFocus(t){
+      let best = detailShots[0], bestDist = Infinity;
+      detailShots.forEach(shot=>{
+        const mid = (shot.in + shot.out) / 2;
+        const d = Math.abs(t - mid);
+        if(d < bestDist){ best = shot; bestDist = d; }
+      });
+      return best.node;
+    }
+    function nodeIgnite(n, t){
+      if(n.area.id === "io" || n.area.name === "肿瘤免疫"){
+        const idx = ioNodes.findIndex(x => x.id === n.id);
+        const start = 2.15 + Math.max(0, idx) * .38;
+        return smoothstep((t - start) / .64);
+      }
+      const sweep = smoothstep((t - (5.0 + n.areaIndex*.36)) / .88) * (1 - smoothstep((t - 20.2) / 1.2));
+      const closeGlow = focusPulse(n, t);
+      return Math.max(sweep*.88, closeGlow);
+    }
+    function drawStars(ctx, size, cam, t){
+      const g = ctx.createRadialGradient(size.w*.52,size.h*.35,20,size.w*.52,size.h*.5,Math.max(size.w,size.h)*.72);
+      g.addColorStop(0,"#0b1623");
+      g.addColorStop(.55,"#07101a");
+      g.addColorStop(1,"#04070c");
+      ctx.fillStyle = g;
+      ctx.fillRect(0,0,size.w,size.h);
+      for(let i=0;i<220;i++){
+        const d = .25 + hash01(i+5)*1.7;
+        let x = hash01(i+17)*size.w + (cam.x*.018*d + t*7*d);
+        let y0 = hash01(i+37)*size.h + (cam.y*.012*d - t*3*d);
+        x = ((x % size.w) + size.w) % size.w;
+        y0 = ((y0 % size.h) + size.h) % size.h;
+        const a = .12 + hash01(i+91)*.48;
+        const r = .45 + hash01(i+151)*1.25;
+        ctx.globalAlpha = a;
+        ctx.fillStyle = "#cfe0f0";
+        ctx.beginPath(); ctx.arc(x,y0,r,0,Math.PI*2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+    function drawTrail(ctx, size, t){
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      const trailTarget = activeFocus(t);
+      for(let i=0;i<9;i++){
+        const dt = clamp(t - i*.09, 0, duration);
+        const cam = cameraAt(dt);
+        const p = project(trailTarget, cam, size);
+        const a = Math.max(0, .22 - i*.022) * smoothstep((t-5.1)/1.3);
+        ctx.strokeStyle = `rgba(232,148,58,${a})`;
+        ctx.lineWidth = Math.max(1, 7 - i*.55);
+        ctx.beginPath();
+        ctx.moveTo(p.x - 26 - i*9, p.y + 18 + i*5);
+        ctx.lineTo(p.x - 4, p.y + 3);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+    function drawGrownLine(ctx, size, cam, t){
+      if(ioNodes.length < 2) return;
+      const progress = smoothstep((t - 2.25) / 3.0);
+      const maxSeg = (ioNodes.length - 1) * progress;
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      for(let i=0;i<ioNodes.length-1;i++){
+        const segP = clamp(maxSeg - i, 0, 1);
+        if(segP <= 0) continue;
+        const a = project(ioNodes[i], cam, size);
+        const b = project(ioNodes[i+1], cam, size);
+        ctx.strokeStyle = `rgba(232,148,58,${.12 + .44*segP})`;
+        ctx.lineWidth = 2.2;
+        ctx.setLineDash([7, 10]);
+        ctx.lineDashOffset = -t * 18;
+        ctx.beginPath();
+        ctx.moveTo(a.x,a.y);
+        ctx.lineTo(mix(a.x,b.x,segP), mix(a.y,b.y,segP));
+        ctx.stroke();
+      }
+      ctx.restore();
+      ctx.setLineDash([]);
+    }
+    function drawNode(ctx, n, cam, size, t){
+      const p = project(n, cam, size);
+      if(p.x < -180 || p.x > size.w+180 || p.y < -180 || p.y > size.h+180) return;
+      const active = nodeIgnite(n,t);
+      const base = n.drug.status === "获批" ? 7.4 : 5.6;
+      const pulse = .5 + .5*Math.sin(t*4.2 + n.h*9);
+      const r = Math.max(2.6, base * cam.s * (.58 + active*.42));
+      const color = ficColor(n.drug.fic, 1);
+      const focusA = focusPulse(n, t);
+      const glow = r * (3.2 + active*4.6 + focusA*5.8);
+      const alpha = .24 + active*.62 + pulse*.08;
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      const g = ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,glow);
+      g.addColorStop(0, ficColor(n.drug.fic, alpha));
+      g.addColorStop(.34, ficColor(n.drug.fic, alpha*.26));
+      g.addColorStop(1, ficColor(n.drug.fic, 0));
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(p.x,p.y,glow,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+      ctx.fillStyle = color;
+      ctx.globalAlpha = .58 + active*.42;
+      ctx.beginPath(); ctx.arc(p.x,p.y,r,0,Math.PI*2); ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = `rgba(255,255,255,${.28 + active*.38})`;
+      ctx.lineWidth = Math.max(1, 1.4*cam.s);
+      ctx.beginPath(); ctx.arc(p.x,p.y,r+2,0,Math.PI*2); ctx.stroke();
+
+      const labelIn = Math.max(active, focusA);
+      if(labelIn > .35 && (cam.s > .78 || focusA > .2)){
+        ctx.save();
+        ctx.globalAlpha = Math.min(.94, labelIn);
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        ctx.font = `${focusA > .2 ? 800 : 700} ${Math.min(24, Math.max(11, 11*cam.s))}px -apple-system, PingFang SC, sans-serif`;
+        ctx.lineWidth = 5;
+        ctx.strokeStyle = "#04070c";
+        ctx.fillStyle = "#e8edf2";
+        ctx.strokeText(n.drug.name, p.x, p.y + r + 8);
+        ctx.fillText(n.drug.name, p.x, p.y + r + 8);
+        ctx.restore();
+      }
+    }
+    function drawAreaHints(ctx, size, cam, t){
+      const aIn = smoothstep((t-4.7)/1.4) * (1-smoothstep((t-20.2)/1.2));
+      if(aIn <= 0) return;
+      ctx.save();
+      ctx.globalAlpha = .72 * aIn;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      areas.forEach((a, i)=>{
+        const p = project({x:80,y:a.y}, cam, size);
+        if(p.y < 90 || p.y > size.h-120) return;
+        ctx.font = "800 22px -apple-system, PingFang SC, sans-serif";
+        ctx.fillStyle = "#e8edf2";
+        ctx.fillText(a.area.name, 34, p.y);
+        ctx.font = "700 11px -apple-system, sans-serif";
+        ctx.fillStyle = i === 0 ? "#E8943A" : "rgba(138,151,166,.82)";
+        ctx.fillText(a.area.en, 34, p.y + 23);
+      });
+      ctx.restore();
+    }
+    function drawDetail(ctx, size, t){
+      let current = null;
+      let inP = 0, a = 0;
+      detailShots.forEach(shot=>{
+        const shotIn = smoothstep((t - shot.in) / .78);
+        const shotOut = smoothstep((t - shot.out) / .68);
+        const shotA = shotIn * (1 - shotOut);
+        if(shotA > a){ current = shot; inP = shotIn; a = shotA; }
+      });
+      if(a <= 0) return;
+      const detailNode = current.node;
+      const panelW = Math.min(size.w*.78, 520);
+      const panelH = 330;
+      const x = mix(size.w + 34, size.w - panelW - 42, easeInOut(inP));
+      const y = size.h*.52 - panelH*.5;
+      ctx.save();
+      ctx.globalAlpha = a;
+      roundRect(ctx, x, y, panelW, panelH, 18);
+      ctx.fillStyle = "rgba(6,9,15,.84)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,.14)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.fillStyle = "#E8943A";
+      ctx.font = "850 13px -apple-system, PingFang SC, sans-serif";
+      ctx.letterSpacing = "1px";
+      ctx.fillText(`${detailNode.area.name} · ${detailNode.track.name} · ${detailNode.drug.year}`, x+24, y+36);
+      ctx.fillStyle = "#e8edf2";
+      ctx.font = "850 31px -apple-system, PingFang SC, sans-serif";
+      ctx.fillText(detailNode.drug.name, x+24, y+82);
+      ctx.fillStyle = "rgba(232,237,242,.68)";
+      ctx.font = "700 15px -apple-system, PingFang SC, sans-serif";
+      ctx.fillText(detailNode.drug.company, x+24, y+112);
+      const barX = x+24, barY = y+151, barW = panelW-48;
+      roundRect(ctx, barX, barY, barW, 10, 5);
+      ctx.fillStyle = "rgba(255,255,255,.08)";
+      ctx.fill();
+      roundRect(ctx, barX, barY, barW*detailNode.drug.fic, 10, 5);
+      const grad = ctx.createLinearGradient(barX,0,barX+barW,0);
+      grad.addColorStop(0,"#4FB0C6"); grad.addColorStop(.52,"#9a86c4"); grad.addColorStop(1,"#E8943A");
+      ctx.fillStyle = grad;
+      ctx.fill();
+      ctx.fillStyle = "#e8edf2";
+      ctx.font = "800 15px -apple-system, PingFang SC, sans-serif";
+      ctx.fillText(`原创度 ${Math.round(detailNode.drug.fic*100)}/100`, x+24, y+186);
+      ctx.fillStyle = "rgba(232,237,242,.72)";
+      ctx.font = "500 14px -apple-system, PingFang SC, sans-serif";
+      wrapCanvasText(ctx, detailNode.drug.note, x+24, y+222, panelW-48, 22, 3);
+      ctx.fillStyle = "rgba(138,151,166,.85)";
+      ctx.font = "700 11px -apple-system, PingFang SC, sans-serif";
+      ctx.fillText(sourceLabel(detailNode.drug.source), x+24, y+panelH-26);
+      ctx.restore();
+    }
+    function drawTitles(ctx, size, t){
+      const titleA = (1 - smoothstep((t-3.2)/1.2)) + smoothstep((t-(duration-2.2))/1.2);
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, titleA);
+      ctx.fillStyle = "#e8edf2";
+      ctx.font = "850 34px -apple-system, PingFang SC, sans-serif";
+      ctx.fillText("中国创新药 · 热门靶点演进图谱", 36, 60);
+      ctx.fillStyle = "#E8943A";
+      ctx.font = "850 16px -apple-system, PingFang SC, sans-serif";
+      ctx.fillText("FAST-FOLLOW → FIRST-IN-CLASS", 36, 92);
+      ctx.fillStyle = "rgba(138,151,166,.82)";
+      ctx.font = "700 12px -apple-system, PingFang SC, sans-serif";
+      ctx.fillText(`${D.areas.length} 领域 · ${allDrugs.length} 节点 · MKTer 小V · 一起进化`, 36, 118);
+      ctx.restore();
+    }
+    function drawFooter(ctx, size){
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.fillStyle = "rgba(138,151,166,.72)";
+      ctx.font = "700 11px -apple-system, PingFang SC, sans-serif";
+      ctx.fillText("公开资料整理 · 精选代表性赛道 · 非穷尽收录 · 不构成投资或医疗建议", size.w/2, size.h - 28);
+      ctx.restore();
+    }
+    function seek(t){
+      t = clamp(Number(t) || 0, 0, duration);
+      const size = canvasSize();
+      const cam = cameraAt(t);
+      const ctx = tourCtx;
+      drawStars(ctx, size, cam, t);
+      drawTrail(ctx, size, t);
+      drawAreaHints(ctx, size, cam, t);
+      drawGrownLine(ctx, size, cam, t);
+      nodes.forEach(n => drawNode(ctx, n, cam, size, t));
+      drawDetail(ctx, size, t);
+      drawTitles(ctx, size, t);
+      drawFooter(ctx, size);
+      return { t, duration };
+    }
+    return { duration, seek };
+  }
+
+  function labelFits(box, boxes){
+    return !boxes.some(b => !(box.x2 < b.x1 || box.x1 > b.x2 || box.y2 < b.y1 || box.y1 > b.y2));
+  }
+
+  let t0 = 0, selected = null;
+  let landscapeRunning = false, drawRaf = 0, animRaf = 0;
+  function draw(ts){
+    if(!landscapeRunning) return;
+    t0 = ts||0;
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+    ctx.clearRect(0,0,W,H);
+    // 背景渐变
+    const bg = ctx.createRadialGradient(W*.5,H*.42,40, W*.5,H*.5, Math.max(W,H)*.75);
+    bg.addColorStop(0,"#0b1320"); bg.addColorStop(1,"#06090f");
+    ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+    // 星
+    for(const st of stars){ const tw=.6+.4*Math.sin(t0/900+st.p);
+      ctx.globalAlpha=st.a*tw; ctx.fillStyle="#cfe0f0"; ctx.beginPath(); ctx.arc(st.x,st.y,st.r,0,7); ctx.fill(); }
+    ctx.globalAlpha=1;
+
+    const s = cam.s;
+    const showTracks = s > 0.24, showNames = s > 0.72, showKeyNames = s > 0.46;
+    const labelBoxes = [];
+
+    // 领域/赛道 行标签 + 网格线
+    ctx.textBaseline="middle";
+    for(const r of rows){
+      const Y = w2sY(r.y);
+      if(Y< -40 || Y>H+40) continue;
+      if(r.type==="area"){
+        const compactCanvas = W < 640;
+        if(compactCanvas && (Y < 210 || Y > H - 190)) continue;
+        ctx.fillStyle="#dfe8f2"; ctx.font="800 "+(compactCanvas ? 16 : Math.max(13, 15*Math.min(1.2,s+.5)))+"px -apple-system,PingFang SC,sans-serif";
+        ctx.textAlign="left"; ctx.fillText(r.label, 22, Y+6);
+        if(!compactCanvas){
+          ctx.fillStyle="rgba(138,151,166,.7)"; ctx.font="600 10px -apple-system,sans-serif";
+          ctx.fillText(r.sub, 22, Y+22);
+        }
+      } else if(showTracks){
+        // 赛道基线
+        ctx.strokeStyle="rgba(255,255,255,.05)"; ctx.lineWidth=1;
+        ctx.beginPath(); ctx.moveTo(w2sX(r.x0),Y); ctx.lineTo(w2sX(r.x1),Y); ctx.stroke();
+        ctx.fillStyle="rgba(190,201,214,.85)"; ctx.font="700 12px -apple-system,sans-serif"; ctx.textAlign="right";
+        ctx.fillText(r.label, w2sX(r.x0)-12, Y);
+        ctx.fillStyle="rgba(138,151,166,.6)"; ctx.font="500 10px -apple-system,sans-serif";
+        ctx.fillText(r.sub, w2sX(r.x0)-12, Y+14);
+      }
+    }
+
+    // 节点
+    for(const n of nodes){
+      const X=w2sX(n.x), Y=w2sY(n.y);
+      if(X<-60||X>W+60||Y<-40||Y>H+40) continue;
+      const f=n.d.fic, R=Math.max(2.5, n.r*Math.min(1.6, s*1.15));
+      const isSel = selected===n;
+      // 光晕
+      const glowR = R*(isSel?6:3.4);
+      const gd = ctx.createRadialGradient(X,Y,0,X,Y,glowR);
+      gd.addColorStop(0, ficColor(f, isSel?.55:.32));
+      gd.addColorStop(1, ficColor(f, 0));
+      ctx.fillStyle=gd; ctx.beginPath(); ctx.arc(X,Y,glowR,0,7); ctx.fill();
+      // 核
+      ctx.fillStyle=ficColor(f, .98); ctx.beginPath(); ctx.arc(X,Y,R,0,7); ctx.fill();
+      // 在研（非获批）描边空心感
+      if(n.d.status!=="获批"){ ctx.strokeStyle="rgba(255,255,255,.5)"; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(X,Y,R+1.5,0,7); ctx.stroke(); }
+      if(isSel){ ctx.strokeStyle="#fff"; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(X,Y,R+4,0,7); ctx.stroke(); }
+      // 名字：按缩放分级显示，并做简易避让，避免热门赛道一团糊。
+      const wantsLabel = isSel || showNames || (showKeyNames && n.d.status==="获批" && n.d.fic>=0.72);
+      if(wantsLabel){
+        const label = n.d.name;
+        ctx.font=(isSel?"700 ":"600 ")+Math.max(10,11)+"px -apple-system,PingFang SC,sans-serif";
+        const tw = ctx.measureText(label).width;
+        const box = { x1:X-tw/2-4, x2:X+tw/2+4, y1:Y+R+2, y2:Y+R+19 };
+        const canDraw = isSel || labelFits(box, labelBoxes);
+        if(!isSel && canDraw) labelBoxes.push(box);
+        if(!canDraw) continue;
+        ctx.fillStyle= isSel?"#fff":"rgba(225,232,240,.9)";
+        ctx.textAlign="center"; ctx.textBaseline="top";
+        ctx.fillText(label, X, Y+R+4);
+        ctx.textBaseline="middle";
+      }
+    }
+    drawRaf = requestAnimationFrame(draw);
+  }
+
+  // ---------- 详情面板 ----------
+  const panel=document.getElementById("panel");
+  function openDrugDetail(d, areaName, trackName, focusNode){
+    selected = focusNode || null;
+    document.getElementById("pcat").textContent = areaName+" · "+trackName;
+    document.getElementById("pname").textContent = d.name;
+    document.getElementById("pco").textContent = d.company;
+    document.getElementById("pfic").style.width = Math.round(d.fic*100)+"%";
+    const tier = d.fic>=.75?"偏原创 first-in-class":(d.fic>=.45?"差异化跟随 me-better":"快速跟随 me-too");
+    document.getElementById("pficv").textContent = "跟随↔原创："+Math.round(d.fic*100)+"/100 · "+tier;
+    document.getElementById("pdl").innerHTML =
+      `<dt>类型</dt><dd>${d.modality}</dd>`+
+      `<dt>阶段</dt><dd><span class="pill">${d.status}</span></dd>`+
+      `<dt>关键年份</dt><dd>${d.year||"—"}</dd>`;
+    document.getElementById("pnote").textContent = d.note||"";
+    const psrc = document.getElementById("psrc");
+    psrc.textContent = "";
+    const srcText = d.source||"公开资料";
+    const url = sourceUrl(srcText);
+    psrc.append("来源：");
+    if(url){
+      const a = document.createElement("a");
+      a.href = url; a.target = "_blank"; a.rel = "noopener"; a.textContent = sourceLabel(srcText);
+      psrc.appendChild(a);
+    }else{
+      const b = document.createElement("b"); b.textContent = srcText; psrc.appendChild(b);
+    }
+    panel.classList.add("on");
+    if(focusNode) flyTo(focusNode);
+  }
+  function openPanel(n){ openDrugDetail(n.d, n.area, n.track, n); }
+  function closePanel(){
+    panel.classList.remove("on");
+    selected=null;
+    if(evolution) evolution.clearSelection();
+  }
+  document.getElementById("px").onclick=closePanel;
+
+  // ---------- 飞近动画 ----------
+  let anim=null;
+  function flyTo(n){
+    const targetS = Math.max(cam.s, 1.1);
+    const Xc=W*0.42, Yc=H*0.5; // 略偏左给面板留位
+    const ox = Xc - n.x*targetS, oy = Yc - n.y*targetS;
+    const from={s:cam.s,ox:cam.ox,oy:cam.oy}, to={s:targetS,ox,oy}, t=performance.now();
+    anim={from,to,t,dur:480};
+  }
+  function tickAnim(now){
+    if(!landscapeRunning) return;
+    if(anim){ let k=(now-anim.t)/anim.dur; if(k>=1){k=1;anim=null;}
+      const e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
+      const f=anim?anim.from:cam, to=(anim?anim.to:cam);
+      if(anim){ cam.s=f.s+(to.s-f.s)*e; cam.ox=f.ox+(to.ox-f.ox)*e; cam.oy=f.oy+(to.oy-f.oy)*e; }
+    }
+    animRaf = requestAnimationFrame(tickAnim);
+  }
+  function startLandscape(){
+    if(landscapeRunning) return;
+    landscapeRunning = true;
+    drawRaf = requestAnimationFrame(draw);
+    animRaf = requestAnimationFrame(tickAnim);
+  }
+  function stopLandscape(){
+    landscapeRunning = false;
+    cancelAnimationFrame(drawRaf);
+    cancelAnimationFrame(animRaf);
+    drawRaf = 0;
+    animRaf = 0;
+  }
+
+  // ---------- 交互：缩放/平移/点击 ----------
+  function zoomAt(cx,cy,factor){
+    const wx=s2wX(cx), wy=s2wY(cy);
+    cam.s=Math.max(0.12, Math.min(4, cam.s*factor));
+    cam.ox=cx-wx*cam.s; cam.oy=cy-wy*cam.s; anim=null;
+  }
+  cv.addEventListener("wheel",e=>{ e.preventDefault(); zoomAt(e.clientX,e.clientY, e.deltaY<0?1.12:1/1.12); },{passive:false});
+  let drag=null, moved=0;
+  cv.addEventListener("pointerdown",e=>{ drag={x:e.clientX,y:e.clientY,ox:cam.ox,oy:cam.oy}; moved=0; cv.classList.add("drag"); cv.setPointerCapture(e.pointerId); anim=null; });
+  cv.addEventListener("pointermove",e=>{ if(!drag)return; const dx=e.clientX-drag.x, dy=e.clientY-drag.y; moved+=Math.abs(dx)+Math.abs(dy); cam.ox=drag.ox+dx; cam.oy=drag.oy+dy; });
+  cv.addEventListener("pointerup",e=>{ cv.classList.remove("drag");
+    if(drag && moved<6){ // 视作点击
+      const n=hit(e.clientX,e.clientY); if(n) openPanel(n); else closePanel();
+    } drag=null; });
+  function hit(cx,cy){ let best=null,bd=1e9;
+    for(const n of nodes){ const X=w2sX(n.x),Y=w2sY(n.y); const d=(X-cx)**2+(Y-cy)**2;
+      const rr=Math.max(14, (n.r*Math.min(1.6,cam.s*1.15)+8))**2; if(d<rr && d<bd){bd=d;best=n;} }
+    return best;
+  }
+  // 双指缩放
+  let pinch=null;
+  cv.addEventListener("touchmove",e=>{ if(e.touches.length===2){ e.preventDefault();
+    const a=e.touches[0],b=e.touches[1], dist=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);
+    const mx=(a.clientX+b.clientX)/2,my=(a.clientY+b.clientY)/2;
+    if(pinch){ zoomAt(mx,my, dist/pinch); } pinch=dist; } },{passive:false});
+  cv.addEventListener("touchend",()=>{ pinch=null; });
+
+  document.getElementById("zin").onclick=()=>zoomAt(W/2,H/2,1.3);
+  document.getElementById("zout").onclick=()=>zoomAt(W/2,H/2,1/1.3);
+  document.getElementById("reset").onclick=()=>{ closePanel(); fit(); };
+
+  // ---------- 演进视图 ----------
+  function createEvolution(){
+    const svg = document.getElementById("evoPlot");
+    const stageWrap = document.getElementById("evoStageWrap");
+    const empty = document.getElementById("evoEmpty");
+    const range = document.getElementById("evoYearRange");
+    const ticks = document.getElementById("evoTicks");
+    const readout = document.getElementById("evoYearReadout");
+    const playBtn = document.getElementById("evoPlay");
+    const minFic = .25, maxFic = .98;
+    let minYear = 2018, maxYear = 2026, currentYear = 2018;
+    let playing = false, autoDone = false, raf = 0, resizeRaf = 0, selectedKey = "";
+    let areas = [], initialized = false, active = false;
+
+    function statusRadius(status, compact){
+      const base = status === "获批" ? 6.4 : status === "III期" ? 5.3 : status === "II期" ? 4.8 : 4.2;
+      return compact ? Math.max(4.2, base - 1) : base;
+    }
+    function compactLabel(d, compact){
+      if(!compact) return d.name;
+      let s = d.name.replace(/\s\+\s/g, "+").replace("单抗", "").replace("抑制剂", "");
+      s = s.replace("依派利+托沃瑞利", "依派利+托沃");
+      s = s.replace("德曲妥珠", "德曲").replace("瑞康曲妥珠", "瑞康");
+      s = s.replace("阿基仑赛", "阿基").replace("瑞基奥仑赛", "瑞基奥").replace("纳基奥仑赛", "纳基");
+      s = s.replace("伊基奥仑赛", "伊基").replace("泽沃基奥仑赛", "泽沃基").replace("西达基奥仑赛", "西达基");
+      s = s.replace("依苏帕格鲁肽α", "依苏帕").replace("托莱西单抗", "托莱西").replace("瑞卡西单抗", "瑞卡西");
+      return s.length > 9 ? s.slice(0, 8) + "..." : s;
+    }
+    function trackShort(track){
+      return track.replace(" / ", "/").replace("IO 双抗 / 组合抗体", "IO 双抗").replace("EGFR / EGFR exon20", "EGFR").replace("GLP-1 / GCG-GLP-1", "GLP-1").replace("B 细胞 / BLyS-APRIL", "BLyS/APRIL");
+    }
+    function areaEnShort(en){
+      return en.replace("Metabolic & Cardiovascular", "Metabolic & CV").replace("Antibody-Drug Conjugate", "ADC");
+    }
+    function approxWidth(text, compact){ return text.length * (compact ? 11.2 : 10.6) + 8; }
+    function boxOverlaps(box, boxes){ return boxes.some(b => !(box.x2 < b.x1 || box.x1 > b.x2 || box.y2 < b.y1 || box.y1 > b.y2)); }
+    function drugKey(d){ return `${d.area}::${d.track}::${d.name}`; }
+
+    function init(){
+      if(initialized) return;
+      if(!D || !Array.isArray(D.areas)) throw new Error("ROAMER_DATA missing areas");
+      areas = D.areas.map(area => ({
+        id: area.id,
+        name: area.name,
+        en: area.en,
+        tracks: area.tracks,
+        drugs: area.tracks.flatMap(track => track.drugs.map(drug => ({...drug, track: track.name, target: track.target, area: area.name, areaEn: area.en})))
+      }));
+      const all = areas.flatMap(a => a.drugs);
+      minYear = Math.min(...all.map(d => d.year));
+      maxYear = Math.max(...all.map(d => d.year));
+      currentYear = minYear;
+      range.min = minYear; range.max = maxYear; range.value = minYear;
+      ticks.textContent = "";
+      for(let y=minYear; y<=maxYear; y++){
+        const s = document.createElement("span");
+        s.textContent = y;
+        ticks.appendChild(s);
+      }
+      initialized = true;
+    }
+    function meta(){
+      init();
+      return `${areas.length} 领域 · ${areas.flatMap(a => a.drugs).length} 节点 · ${minYear}→${maxYear}`;
+    }
+    function layout(){
+      const rect = stageWrap.getBoundingClientRect();
+      const compact = rect.width < 760;
+      const width = Math.max(320, rect.width);
+      const viewportH = Math.max(320, rect.height);
+      const topPad = compact ? 10 : 12;
+      const bottomPad = compact ? 14 : 12;
+      const gap = compact ? 12 : 8;
+      let bandH;
+      if(compact){
+        bandH = 174;
+      }else{
+        const fitH = Math.floor((viewportH - topPad - bottomPad - gap * (areas.length - 1)) / areas.length);
+        bandH = clamp(fitH, 94, 126);
+      }
+      const height = topPad + bottomPad + areas.length * bandH + (areas.length - 1) * gap;
+      const plotLeft = compact ? 54 : 174;
+      const plotRight = compact ? 24 : 40;
+      const plotW = Math.max(120, width - plotLeft - plotRight);
+      const x = year => plotLeft + ((year - minYear) / (maxYear - minYear)) * plotW;
+      return { compact, width, viewportH, topPad, bottomPad, gap, bandH, height, plotLeft, plotRight, plotW, x };
+    }
+    function placeLabel(d, L, X, Y, bandTop, bandBottom, boxes){
+      const label = compactLabel(d, L.compact);
+      const w = approxWidth(label, L.compact);
+      const rightSide = X < L.width * (L.compact ? .62 : .72);
+      const anchor = rightSide ? "start" : "end";
+      const dx = rightSide ? 8 : -8;
+      const candidates = L.compact ? [-11, 12, -25, 26, 0, 40, -38] : [-10, 15, -26, 31, 0, 46, -42];
+      for(const dy of candidates){
+        const x1 = anchor === "start" ? X + dx : X + dx - w;
+        const x2 = x1 + w;
+        const y1 = Y + dy - 10;
+        const y2 = Y + dy + (L.compact ? 5 : 18);
+        const box = { x1, x2, y1, y2 };
+        if(x1 >= L.plotLeft - 2 && x2 <= L.width - L.plotRight + 2 && y1 >= bandTop + 3 && y2 <= bandBottom - 4 && !boxOverlaps(box, boxes)){
+          boxes.push(box);
+          return { label, anchor, dx, dy };
+        }
+      }
+      return null;
+    }
+    function render(){
+      if(!active || !areas.length) return;
+      const L = layout();
+      svg.setAttribute("viewBox", `0 0 ${L.width} ${L.height}`);
+      svg.style.height = `${L.height}px`;
+      svg.textContent = "";
+      empty.hidden = true;
+
+      const defs = svgEl("defs");
+      const grad = svgEl("linearGradient", { id:"curveGrad", x1:"0%", y1:"100%", x2:"100%", y2:"0%" });
+      grad.append(svgEl("stop", { offset:"0%", "stop-color":"#4FB0C6" }));
+      grad.append(svgEl("stop", { offset:"48%", "stop-color":"#9a86c4" }));
+      grad.append(svgEl("stop", { offset:"100%", "stop-color":"#E8943A" }));
+      defs.append(grad);
+      svg.append(defs);
+
+      const cursorX = L.x(currentYear);
+      areas.forEach((area, ai)=>{
+        const bandTop = L.topPad + ai * (L.bandH + L.gap);
+        const bandBottom = bandTop + L.bandH;
+        const plotTop = bandTop + (L.compact ? 46 : 18);
+        const plotBottom = bandBottom - (L.compact ? 20 : 14);
+        const plotH = Math.max(44, plotBottom - plotTop);
+        const y = fic => plotBottom - ((fic - minFic) / (maxFic - minFic)) * plotH;
+        const labelBoxes = [];
+
+        if(ai > 0) svg.append(svgEl("line", { class:"bandDivider", x1:0, y1:bandTop - L.gap/2, x2:L.width, y2:bandTop - L.gap/2 }));
+        svg.append(svgEl("rect", { class:"fieldFrame", x:L.plotLeft, y:plotTop, width:L.plotW, height:plotH, rx:7 }));
+
+        const areaX = L.compact ? 14 : 24;
+        const areaNameY = L.compact ? bandTop + 20 : bandTop + 30;
+        const an = svgEl("text", { class:"areaName", x:areaX, y:areaNameY });
+        an.textContent = area.name;
+        svg.append(an);
+        const ae = svgEl("text", { class:"areaEn", x:areaX, y:areaNameY + 15 });
+        ae.textContent = areaEnShort(area.en);
+        svg.append(ae);
+        const ac = svgEl("text", { class:"areaCount", x:areaX, y:areaNameY + 30 });
+        ac.textContent = `${area.drugs.length} 节点`;
+        svg.append(ac);
+
+        for(let yr=minYear; yr<=maxYear; yr++){
+          const X = L.x(yr);
+          svg.append(svgEl("line", { class:`grid ${yr===minYear || yr===maxYear ? "major" : ""}`, x1:X, y1:plotTop, x2:X, y2:plotBottom }));
+        }
+        [.3,.5,.7,.9].forEach(f=>{
+          const Y = y(f);
+          svg.append(svgEl("line", { class:`grid ${f===.5 ? "major" : ""}`, x1:L.plotLeft, y1:Y, x2:L.plotLeft+L.plotW, y2:Y }));
+          if(!L.compact || f !== .3){
+            const t = svgEl("text", { class:"axisText", x:L.plotLeft-9, y:Y+3, "text-anchor":"end" });
+            t.textContent = Math.round(f*100);
+            svg.append(t);
+          }
+        });
+
+        if(ai === 0){
+          const top = svgEl("text", { class:"axisStrong", x:L.plotLeft, y:plotTop-8, "text-anchor":"start" });
+          top.textContent = "原创";
+          svg.append(top);
+        }
+        const bottom = svgEl("text", { class:"axisText", x:L.plotLeft, y:plotBottom-6, "text-anchor":"start" });
+        bottom.textContent = L.compact ? "跟随" : "快速跟随";
+        svg.append(bottom);
+
+        const points = area.drugs.slice().sort((a,b)=>a.year-b.year || a.fic-b.fic).map(d => `${L.x(d.year)},${y(d.fic)}`);
+        svg.append(svgEl("polyline", { class:"guide", points:points.join(" ") }));
+        svg.append(svgEl("line", { class:"cursorLine", x1:cursorX, y1:plotTop-5, x2:cursorX, y2:plotBottom+4 }));
+
+        area.drugs.slice().sort((a,b)=>a.year-b.year || a.fic-b.fic).forEach(d=>{
+          const isActive = autoDone || d.year <= currentYear + .001;
+          const hot = !autoDone && Math.abs(currentYear - d.year) < .18;
+          const key = drugKey(d);
+          const X = L.x(d.year);
+          const Y = y(d.fic);
+          const R = statusRadius(d.status, L.compact);
+          const g = svgEl("g", { class:`drug ${isActive ? "active" : "inactive"} ${hot ? "hot" : ""} ${selectedKey === key ? "selected" : ""}`, tabindex:"0", role:"button", "data-name":d.name, "data-area":area.name });
+          const title = svgEl("title");
+          title.textContent = `${d.name} · ${d.area} · ${d.year}`;
+          g.append(title);
+          g.append(svgEl("circle", { class:"nodeHalo", cx:X, cy:Y, r:R*3.5, fill:ficColor(d.fic,.24) }));
+          g.append(svgEl("circle", { class:"nodeDot", cx:X, cy:Y, r:hot ? R+1.6 : R, fill:ficColor(d.fic,.96), stroke:"rgba(255,255,255,.68)", "stroke-width":"1" }));
+          const p = placeLabel(d, L, X, Y, plotTop, plotBottom, labelBoxes);
+          if(p){
+            const label = svgEl("text", { class:"nodeLabel", x:X+p.dx, y:Y+p.dy, "text-anchor":p.anchor });
+            label.textContent = p.label;
+            g.append(label);
+            if(!L.compact){
+              const track = svgEl("text", { class:"trackLabel", x:X+p.dx, y:Y+p.dy+12, "text-anchor":p.anchor, fill:ficColor(d.fic,.86), "paint-order":"stroke", stroke:"#06090f", "stroke-width":"3" });
+              track.textContent = trackShort(d.track);
+              g.append(track);
+            }
+          }
+          g.addEventListener("click", ()=>selectDrug(d));
+          g.addEventListener("keydown", e=>{ if(e.key === "Enter" || e.key === " "){ e.preventDefault(); selectDrug(d); } });
+          svg.append(g);
+        });
+      });
+    }
+    function selectDrug(d){
+      selectedKey = drugKey(d);
+      openDrugDetail(d, d.area, d.track, null);
+      render();
+    }
+    function setYear(y, manual){
+      currentYear = clamp(y, minYear, maxYear);
+      range.value = currentYear;
+      readout.textContent = Math.round(currentYear).toString();
+      if(manual) autoDone = false;
+      render();
+    }
+    function play(){
+      if(!active) return;
+      cancelAnimationFrame(raf);
+      playing = true;
+      autoDone = false;
+      playBtn.textContent = "Ⅱ";
+      const start = performance.now();
+      const dur = 3000;
+      function step(now){
+        if(!active || !playing) return;
+        const t = Math.min(1, (now - start) / dur);
+        const eased = t < .5 ? 2*t*t : 1 - Math.pow(-2*t+2,2)/2;
+        setYear(minYear + (maxYear - minYear) * eased, false);
+        if(t < 1 && playing){
+          raf = requestAnimationFrame(step);
+        }else{
+          playing = false;
+          autoDone = true;
+          playBtn.textContent = "▶";
+          setYear(maxYear, false);
+        }
+      }
+      raf = requestAnimationFrame(step);
+    }
+    function pause(){
+      playing = false;
+      cancelAnimationFrame(raf);
+      raf = 0;
+      playBtn.textContent = "▶";
+    }
+    function start(){
+      try{
+        init();
+        active = true;
+        selectedKey = "";
+        stageWrap.scrollTop = 0;
+        setYear(minYear, true);
+        play();
+      }catch(err){
+        active = true;
+        empty.hidden = false;
+        empty.textContent = "数据读取失败：" + err.message;
+        console.error(err);
+      }
+    }
+    function stop(){
+      active = false;
+      pause();
+      cancelAnimationFrame(resizeRaf);
+      resizeRaf = 0;
+    }
+    function onResize(){
+      if(!active) return;
+      cancelAnimationFrame(resizeRaf);
+      resizeRaf = requestAnimationFrame(render);
+    }
+    function clearSelection(){
+      selectedKey = "";
+      render();
+    }
+    range.addEventListener("input", e=>{ pause(); setYear(parseFloat(e.target.value), true); });
+    playBtn.addEventListener("click", ()=>{ if(playing){ pause(); return; } setYear(minYear, true); play(); });
+    return { start, stop, onResize, clearSelection, meta };
+  }
+
+  // ---------- 来源面板 ----------
+  const sources = document.getElementById("sources");
+  const sourceBtn = document.getElementById("sourceBtn");
+  const sourceList = document.getElementById("sourceList");
+  function closeSources(){ sources.classList.remove("on"); }
+  function buildSources(){
+    const bySource = new Map();
+    D.areas.forEach(area=>area.tracks.forEach(track=>track.drugs.forEach(dr=>{
+      const key = dr.source || "公开资料";
+      if(!bySource.has(key)) bySource.set(key, []);
+      bySource.get(key).push(dr.name);
+    })));
+    sourceList.textContent = "";
+    [...bySource.entries()].forEach(([src, names])=>{
+      const item = document.createElement("div");
+      item.className = "sourceItem";
+      const url = sourceUrl(src);
+      const label = sourceLabel(src);
+      if(url){
+        const a = document.createElement("a");
+        a.href = url; a.target = "_blank"; a.rel = "noopener"; a.textContent = label;
+        item.appendChild(a);
+      }else{
+        const b = document.createElement("b");
+        b.textContent = label;
+        item.appendChild(b);
+      }
+      const meta = document.createElement("span");
+      meta.textContent = names.slice(0, 6).join("、") + (names.length>6 ? " 等" : "");
+      item.appendChild(meta);
+      sourceList.appendChild(item);
+    });
+  }
+  sourceBtn.onclick=()=>{ closePanel(); sources.classList.add("on"); };
+  document.getElementById("sx").onclick=closeSources;
+
+  // ---------- 视图切换 ----------
+  function setMode(next, force){
+    if(mode === next && !force) return;
+    closePanel();
+    mode = next;
+    document.body.classList.toggle("mode-evolution", mode === "evolution");
+    document.body.classList.toggle("mode-landscape", mode === "landscape");
+    modeLandscapeBtn.classList.toggle("on", mode === "landscape");
+    modeEvolutionBtn.classList.toggle("on", mode === "evolution");
+    modeLandscapeBtn.setAttribute("aria-selected", mode === "landscape" ? "true" : "false");
+    modeEvolutionBtn.setAttribute("aria-selected", mode === "evolution" ? "true" : "false");
+    if(mode === "evolution"){
+      stopLandscape();
+      evoView.hidden = false;
+      viewMeta.textContent = evolution.meta();
+      evolution.start();
+    }else{
+      evolution.stop();
+      evoView.hidden = true;
+      viewMeta.textContent = `${D.areas.length} 领域 · ${nodes.length} 节点`;
+      resize();
+      startLandscape();
+    }
+  }
+  modeLandscapeBtn.onclick = ()=>setMode("landscape");
+  modeEvolutionBtn.onclick = ()=>setMode("evolution");
+
+  // ---------- resize ----------
+  function resize(){ W=innerWidth; H=innerHeight; DPR=Math.min(devicePixelRatio||1,2);
+    cv.width=W*DPR; cv.height=H*DPR; cv.style.width=W+"px"; cv.style.height=H+"px"; makeStars(); }
+  addEventListener("resize",()=>{ const had=cam.s; resize(); if(!had) fit(); if(evolution) evolution.onResize(); });
+
+  // init
+  if(isTour){
+    document.body.classList.add("tour-mode");
+    document.getElementById("tourCv").hidden = false;
+    window.__tour = createTourMode();
+    window.__tour.seek(0);
+    return;
+  }
+  resize(); fit();
+  if(D.meta && D.meta._seed) document.getElementById("seedTag").hidden=false;
+  buildSources();
+  evolution = createEvolution();
+  setMode("landscape", true);
+})();
+</script>
+</body>
+</html>
