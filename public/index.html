@@ -252,7 +252,7 @@
   const viewMeta = document.getElementById("viewMeta");
   const evoView = document.getElementById("evoView");
   const isTour = new URLSearchParams(location.search).get("tour") === "1";
-  let DPR = Math.min(window.devicePixelRatio||1, 2), W=0, H=0;
+  let DPR = Math.min(window.devicePixelRatio||1, 3), W=0, H=0;
   let mode = "";
   let evolution = null;
 
@@ -1258,7 +1258,7 @@
   modeEvolutionBtn.onclick = ()=>setMode("evolution");
 
   // ---------- resize ----------
-  function resize(){ W=innerWidth; H=innerHeight; DPR=Math.min(devicePixelRatio||1,2);
+  function resize(){ W=innerWidth; H=innerHeight; DPR=Math.min(devicePixelRatio||1,3);
     cv.width=W*DPR; cv.height=H*DPR; cv.style.width=W+"px"; cv.style.height=H+"px"; makeStars(); }
   addEventListener("resize",()=>{ const had=cam.s; resize(); if(!had) fit(); if(evolution) evolution.onResize(); });
 
