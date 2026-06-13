@@ -256,16 +256,21 @@
   let mode = "";
   let evolution = null;
 
-  // ---------- 布局：x=fic 光谱，y 按 领域→赛道 分行 ----------
-  const MARGIN_X = 180, ROW_H = 70, TRACK_GAP = 8, AREA_GAP = 34, TOP = 90;
-  const SPAN_X = 1500; // 世界坐标 x 跨度（fic 0..1 映射到 [MARGIN_X, MARGIN_X+SPAN_X]）
+  // ---------- 布局：x=fic 光谱，y 按 领域→赛道 分行（竖屏压缩横向跨度，避免挤到顶部）----------
+  let MARGIN_X = 180, SPAN_X = 1500;
+  const ROW_H = 70, TRACK_GAP = 8, AREA_GAP = 34, TOP = 90;
   const nodes = [];      // {x,y,r,d, track, area}
   const rows = [];       // {type:'area'|'track', label, sub, y, x0,x1}
   let worldH = 0;
-  (function layout(){
+  let layoutPortrait = null;
+  function isPortrait(){ return innerWidth < innerHeight || innerWidth <= 640; }
+  function buildLayout(){
+    layoutPortrait = isPortrait();
+    MARGIN_X = layoutPortrait ? 96 : 180;
+    SPAN_X = layoutPortrait ? 470 : 1500; // 世界坐标 x 跨度（fic 0..1 → [MARGIN_X, MARGIN_X+SPAN_X]）
+    nodes.length = 0; rows.length = 0;
     let y = TOP;
     D.areas.forEach(area=>{
-      const areaY0 = y;
       rows.push({type:"area", label:area.name, sub:area.en, y:y});
       y += 30;
       area.tracks.forEach(tr=>{
@@ -287,17 +292,22 @@
       y += AREA_GAP;
     });
     worldH = y;
-  })();
+  }
+  buildLayout();
 
   // ---------- 相机 ----------
   let cam = { s:1, ox:0, oy:0 };
   function fit(){
-    const m = 60;
-    const sx = (W - m*2) / (MARGIN_X + SPAN_X + MARGIN_X);
-    const sy = (H - m*2 - 120) / worldH;
+    const portrait = isPortrait();
+    const m = portrait ? 16 : 60;
+    const topUI = portrait ? 168 : 70;   // 竖屏给顶部标题/切换键留位
+    const botUI = portrait ? 132 : 120;  // 底部光谱图例留位
+    const worldW = MARGIN_X + SPAN_X + MARGIN_X;
+    const sx = (W - m*2) / worldW;
+    const sy = (H - topUI - botUI) / worldH;
     cam.s = Math.min(sx, sy);
-    cam.ox = (W - (MARGIN_X+SPAN_X+MARGIN_X)*cam.s)/2;
-    cam.oy = 70;
+    cam.ox = (W - worldW*cam.s)/2;
+    cam.oy = topUI;
   }
   const w2sX = x => x*cam.s + cam.ox;
   const w2sY = y => y*cam.s + cam.oy;
@@ -1301,7 +1311,7 @@
   // ---------- resize ----------
   function resize(){ W=innerWidth; H=innerHeight; DPR=Math.min(devicePixelRatio||1,3);
     cv.width=W*DPR; cv.height=H*DPR; cv.style.width=W+"px"; cv.style.height=H+"px"; makeStars(); }
-  addEventListener("resize",()=>{ const had=cam.s; resize(); if(!had) fit(); if(evolution) evolution.onResize(); });
+  addEventListener("resize",()=>{ const had=cam.s; resize(); if(layoutPortrait !== isPortrait()){ buildLayout(); fit(); } else if(!had) fit(); if(evolution) evolution.onResize(); });
 
   // init
   if(isTour){
